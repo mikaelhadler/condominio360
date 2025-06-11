@@ -1,34 +1,59 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Grid, Paper, Button } from '@mui/material';
-import { Link, useNavigate } from 'react-router-dom';
+import { Box, Container, Typography, Grid, Paper } from '@mui/material';
 import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import Sidebar from '../components/Sidebar';
+import { useNavigate } from 'react-router-dom';
 
 function Dashboard() {
   const [condoName, setCondoName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stats, setStats] = useState({
+    reclamacoesNovas: 0,
+    reclamacoesEmAndamento: 0,
+    reclamacoesRespondidas: 0,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
-    async function fetchCondo() {
+    async function fetchData() {
       try {
+        setLoading(true);
         const user = auth.currentUser;
         if (!user) {
           setError('Usuário não autenticado');
           return;
         }
 
-        // Buscar o documento diretamente usando o ID do usuário
+        // Buscar dados do condomínio
         const condoRef = doc(db, 'condominios', user.uid);
         const condoDoc = await getDoc(condoRef);
-
         if (condoDoc.exists()) {
           setCondoName(condoDoc.data().nome);
-        } else {
-          setError('Dados do condomínio não encontrados');
         }
+
+        // Buscar estatísticas de reclamações
+        const reclamacoesRef = collection(db, 'condominios', user.uid, 'reclamacoes');
+
+        // Reclamações novas
+        const novasQuery = query(reclamacoesRef, where('status', '==', 'nova'));
+        const novasSnapshot = await getDocs(novasQuery);
+
+        // Reclamações em andamento
+        const andamentoQuery = query(reclamacoesRef, where('status', '==', 'em andamento'));
+        const andamentoSnapshot = await getDocs(andamentoQuery);
+
+        // Reclamações respondidas
+        const respondidasQuery = query(reclamacoesRef, where('status', '==', 'respondida'));
+        const respondidasSnapshot = await getDocs(respondidasQuery);
+
+        setStats({
+          reclamacoesNovas: novasSnapshot.size,
+          reclamacoesEmAndamento: andamentoSnapshot.size,
+          reclamacoesRespondidas: respondidasSnapshot.size,
+        });
+
       } catch (err) {
         console.error('Erro ao buscar dados:', err);
         setError('Erro ao carregar dados do condomínio');
@@ -37,87 +62,176 @@ function Dashboard() {
       }
     }
 
-    fetchCondo();
+    fetchData();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      navigate('/login');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-    }
+  const handleCardClick = (status = '') => {
+    navigate(`/reclamacoes${status ? `?status=${status}` : ''}`);
   };
 
   if (loading) {
-    return <Container sx={{ mt: 4 }}>Carregando...</Container>;
+    return (
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <Sidebar condoName={condoName} />
+        <Box sx={{ flexGrow: 1, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography>Carregando...</Typography>
+        </Box>
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Container sx={{ mt: 4 }}>
-        <Typography color="error" gutterBottom>{error}</Typography>
-        <Button onClick={handleLogout} variant="contained" color="primary">
-          Voltar para Login
-        </Button>
-      </Container>
+      <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+        <Sidebar condoName={condoName} />
+        <Box sx={{ flexGrow: 1, p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <Container sx={{ mt: 4 }}>
-      <Grid container justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-        <Grid item>
-          <Typography variant="h4" gutterBottom>
-            Bem-vindo ao condomínio {condoName}
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar condoName={condoName} />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          bgcolor: 'background.default',
+          overflow: 'auto',
+        }}
+      >
+        <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              mb: 6,
+              fontWeight: 'bold',
+              color: 'primary.main',
+            }}
+          >
+            Visão Geral
           </Typography>
-        </Grid>
-        <Grid item>
-          <Button onClick={handleLogout} variant="outlined" color="primary">
-            Sair
-          </Button>
-        </Grid>
-      </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6">Reclamações</Typography>
-            <Typography variant="h3">0</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6">Manutenções Futuras</Typography>
-            <Typography variant="h3">0</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="h6">Inadimplentes</Typography>
-            <Typography variant="h3">0</Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={4}>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  height: '100%',
+                  cursor: 'pointer',
+                  transition: '0.3s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: 3,
+                    bgcolor: 'error.light',
+                    '& .MuiTypography-root': {
+                      color: 'white',
+                    },
+                  },
+                }}
+                onClick={() => handleCardClick('nova')}
+              >
+                <Typography variant="h6" color="error" gutterBottom>
+                  Novas Reclamações
+                </Typography>
+                <Typography variant="h3" color="error" sx={{ my: 3 }}>
+                  {stats.reclamacoesNovas}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Reclamações aguardando análise
+                </Typography>
+              </Paper>
+            </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 4 }}>
-        <Grid item>
-          <Button component={Link} to="/reclamacoes" variant="contained">
-            Reclamações
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button component={Link} to="/manutencoes" variant="contained">
-            Manutenções
-          </Button>
-        </Grid>
-        <Grid item>
-          <Button component={Link} to="/inadimplentes" variant="contained">
-            Inadimplentes
-          </Button>
-        </Grid>
-      </Grid>
-    </Container>
+            <Grid item xs={12} md={4}>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  height: '100%',
+                  cursor: 'pointer',
+                  transition: '0.3s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: 3,
+                    bgcolor: 'warning.light',
+                    '& .MuiTypography-root': {
+                      color: 'white',
+                    },
+                  },
+                }}
+                onClick={() => handleCardClick('em andamento')}
+              >
+                <Typography variant="h6" color="warning.main" gutterBottom>
+                  Em Andamento
+                </Typography>
+                <Typography variant="h3" color="warning.main" sx={{ my: 3 }}>
+                  {stats.reclamacoesEmAndamento}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Reclamações sendo tratadas
+                </Typography>
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  height: '100%',
+                  cursor: 'pointer',
+                  transition: '0.3s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    boxShadow: 3,
+                    bgcolor: 'success.light',
+                    '& .MuiTypography-root': {
+                      color: 'white',
+                    },
+                  },
+                }}
+                onClick={() => handleCardClick('respondida')}
+              >
+                <Typography variant="h6" color="success.main" gutterBottom>
+                  Respondidas
+                </Typography>
+                <Typography variant="h3" color="success.main" sx={{ my: 3 }}>
+                  {stats.reclamacoesRespondidas}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Reclamações finalizadas
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          <Box sx={{ mt: 8 }}>
+            <Typography variant="h5" sx={{ mb: 4 }}>
+              Atividades Recentes
+            </Typography>
+            <Paper sx={{ p: 4 }}>
+              <Typography color="text.secondary">
+                Nenhuma atividade recente para exibir.
+              </Typography>
+            </Paper>
+          </Box>
+        </Container>
+      </Box>
+    </Box>
   );
 }
 
