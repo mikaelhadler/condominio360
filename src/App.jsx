@@ -6,6 +6,7 @@ import ResetPassword from './pages/ResetPassword';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
+import Dashboard from './pages/Dashboard';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -28,7 +29,7 @@ function App() {
       <Route path="/reset" element={<ResetPassword />} />
       <Route
         path="/"
-        element={user ? <div>Bem-vindo, {user.email}</div> : <Navigate to="/login" />}
+        element={user ? <Dashboard /> : <Navigate to="/login" />}
       />
     </Routes>
   );
