@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Reclamacoes from './pages/Reclamacoes';
 import Manutencoes from './pages/Manutencoes';
+import Pagamentos from './pages/Pagamentos';
 import { useAuth } from './contexts/AuthContext';
 
 function PrivateRoute({ children }) {
@@ -44,6 +45,14 @@ function App() {
           element={
             <PrivateRoute>
               <Manutencoes />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/pagamentos"
+          element={
+            <PrivateRoute>
+              <Pagamentos />
             </PrivateRoute>
           }
         />

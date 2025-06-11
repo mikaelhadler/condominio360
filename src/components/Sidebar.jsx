@@ -25,6 +25,7 @@ import {
   ExitToApp as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
   Report as ReportIcon,
+  Payment as PaymentIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../firebase';
@@ -35,6 +36,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Reclamações', icon: <ReportIcon />, path: '/reclamacoes' },
   { text: 'Manutenções', icon: <BuildIcon />, path: '/manutencoes' },
+  { text: 'Pagamentos', icon: <PaymentIcon />, path: '/pagamentos' },
   { text: 'Inadimplentes', icon: <MoneyIcon />, path: '/inadimplentes' },
   { text: 'Moradores', icon: <PeopleIcon />, path: '/moradores' },
   { text: 'Configurações', icon: <SettingsIcon />, path: '/configuracoes' },
